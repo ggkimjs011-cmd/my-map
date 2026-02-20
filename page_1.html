@@ -1,0 +1,210 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>카카오맵 폴리곤 표시 + 거리 계산 + 이동경로 표시</title>
+    <style>
+        #map {
+            width:100%;
+            height:500px;
+        }
+        #output {
+            margin-top:10px;
+            font-size:14px;
+            color:#333;
+            white-space:pre-line;
+        }
+    </style>
+    <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=5f6ea66cec7c2d446a61f4756b27880b&libraries=services"></script>
+</head>
+<body>
+<div id="map"></div>
+<div style="margin-top:10px;">
+    <button onclick="map.setMapTypeId(kakao.maps.MapTypeId.ROADMAP)">일반지도</button>
+    <button onclick="map.setMapTypeId(kakao.maps.MapTypeId.HYBRID)">위성지도</button>
+</div>
+<div style="margin-top:10px;">
+    <label>X 이동: <input type="number" id="xShift" step="0.000001" value="0"></label>
+    <label>Y 이동: <input type="number" id="yShift" step="0.000001" value="0"></label>
+    <button onclick="addMovedPolygon()">이동된 폴리곤 추가</button>
+    <button onclick="removeMovedPolygons()">이동된 폴리곤 모두 제거</button>
+</div>
+<div style="margin-top:10px;">
+    <button id="toggleBtn" onclick="toggleOriginalPolygons()">기존 폴리곤 없애기</button>
+</div>
+<div id="output"></div>
+
+<script>
+    var map = new kakao.maps.Map(document.getElementById('map'), {
+        center: new kakao.maps.LatLng(35.95673899104927, 128.1385844499166),
+        level: 3,
+        mapTypeId: kakao.maps.MapTypeId.HYBRID
+    });
+
+    var polygons = [[[128.13405036523935, 35.95545777371576], [128.13478470524618, 35.95581413324839], [128.13602037173, 35.95674689075028], [128.137017659601, 35.95719144969903], [128.13724637820533, 35.95732870083073], [128.13785911735866, 35.95771983555153], [128.13794074927907, 35.957673533358], [128.13798906200014, 35.957668888299786], [128.1380015140552, 35.95761657295778], [128.13805275703044, 35.95759730441343], [128.13812516659488, 35.957591724174264], [128.13815020947814, 35.95757108653845], [128.13818858721626, 35.95756163861966], [128.13821650889994, 35.95754536547348], [128.13832580355418, 35.95753202069775], [128.13835599585934, 35.95755054125774], [128.13835438835875, 35.957575015372285], [128.13833910734087, 35.95760312212973], [128.13836078887272, 35.95762042794149], [128.13834920174014, 35.9576452268152], [128.13833446085158, 35.957670552740005], [128.13835884352977, 35.957676973426686], [128.13838518118988, 35.95767079133116], [128.13842596392635, 35.957663415373865], [128.13851123311682, 35.95768011498359], [128.1385799666375, 35.957783211096675], [128.13854739141945, 35.957530270659234], [128.13858674223573, 35.95750065168199], [128.1390650762383, 35.95748099197159], [128.13938199823278, 35.95725211937097], [128.13964113634253, 35.95721597676785], [128.13993953197345, 35.95747514216487], [128.14007638758977, 35.95748275734382], [128.14024742308635, 35.957533704145085], [128.14039414316775, 35.957603698906894], [128.14046969876367, 35.957621778371966], [128.13995053123742, 35.95702571018733], [128.1397129827325, 35.95593458566799], [128.13933712216487, 35.955325854375104], [128.13862715591992, 35.955661091702105], [128.13834243070895, 35.955737818564856], [128.13782945264202, 35.95587604977303], [128.13733682408937, 35.95587176489134], [128.13700909766655, 35.95596607684601], [128.13687233498962, 35.9552270246431], [128.13651797291018, 35.95507449319806], [128.13603489321616, 35.95541567581043], [128.1360348798478, 35.955416901349835], [128.1357889905931, 35.955588258102104], [128.1348352221665, 35.955289998090365], [128.13441795302143, 35.95529337389136], [128.13405036523935, 35.95545777371576]], [[128.1393151648325, 35.95688946392147], [128.13928363624277, 35.95688273074575], [128.13925060835032, 35.95686504618891], [128.1392038555271, 35.95684452336084], [128.13918539055427, 35.95687394113733], [128.13915846797494, 35.95688195766258], [128.1391477323605, 35.95686006240897], [128.13911439265394, 35.956839455677446], [128.13907759690346, 35.95676765380928], [128.13905687350726, 35.95673461099729], [128.13902605260094, 35.956721925889], [128.1389521797272, 35.95667764162397], [128.13890599894592, 35.956674867474284], [128.13883722186625, 35.95667368824303], [128.13882388822378, 35.95665321621149], [128.13880856713155, 35.95660858667053], [128.13878232036717, 35.956566690347195], [128.13876030767662, 35.95653806312232], [128.1387405985192, 35.95651981628402], [128.13872381701083, 35.95647392356196], [128.13870178632635, 35.956466321258326], [128.13867489866323, 35.956422212357104], [128.13864578559495, 35.95641048569205], [128.1386198442059, 35.956355812472246], [128.13861199170918, 35.95631242618669], [128.138586177, 35.956269550614785], [128.13855391890303, 35.95625348455472], [128.138549916019, 35.95623119606471], [128.13855714740717, 35.956200219643925], [128.13859823543652, 35.9561748938558], [128.1386577296962, 35.95617447444278], [128.13869881108792, 35.95617727511296], [128.13871831975044, 35.95620375751114], [128.13876030380735, 35.956270333762056], [128.13879696010463, 35.95631006091886], [128.13880436388078, 35.95633661851101], [128.13882461334393, 35.95637143333056], [128.1388487426663, 35.95640825867904], [128.1388965009993, 35.956453508864634], [128.13890143605127, 35.95649711748889], [128.13891464879973, 35.95652157195991], [128.1389676575753, 35.95652739618008], [128.13901085330124, 35.9565467850587], [128.1390372640937, 35.95656136705445], [128.13906864222562, 35.95655133684076], [128.13909322167905, 35.956557984092264], [128.13913305999364, 35.95655585511552], [128.13918697463993, 35.95656298347993], [128.13920199557288, 35.956599554064496], [128.13921914720902, 35.95667261163271], [128.13924625186038, 35.95669475064715], [128.1392718467814, 35.95669771923795], [128.1393035204085, 35.95675841748251], [128.13933737218528, 35.95679310462802], [128.13935823260886, 35.956829870344016], [128.1393151648325, 35.95688946392147]], [[128.13980081077017, 35.95699941069289], [128.13974843580016, 35.956992347729546], [128.1396481973593, 35.95697617235213], [128.139610493154, 35.956963455989666], [128.13957572512, 35.956954933270175], [128.13955109025923, 35.9569666342078], [128.13952173392772, 35.95696604487367], [128.13951253150432, 35.956921369244775], [128.13955123894613, 35.95688867222171], [128.13961637612343, 35.95690454154853], [128.1396726211917, 35.9569267545419], [128.13972222921328, 35.95694159307519], [128.13977076318187, 35.95697163618014], [128.13980081077017, 35.95699941069289]]];
+    var originalPolygons = [];
+    var polygonsVisible = true;
+    var movedPolygons = [];
+
+    function drawOriginalPolygons() {
+        polygons.forEach(function(points) {
+            var path = points.map(function(p) {
+                return new kakao.maps.LatLng(p[1], p[0]);
+            });
+
+            var polygon = new kakao.maps.Polygon({
+                path: path,
+                strokeWeight: 2,
+                strokeColor: '#FF0000',
+                strokeOpacity: 0.8,
+                fillColor: '#FF0000',
+                fillOpacity: 0.4
+            });
+            polygon.setMap(map);
+            originalPolygons.push(polygon);
+        });
+    }
+
+    drawOriginalPolygons();
+
+    function toggleOriginalPolygons() {
+        if (polygonsVisible) {
+            originalPolygons.forEach(function(poly) {
+                poly.setMap(null);
+            });
+            originalPolygons = [];
+            polygonsVisible = false;
+            document.getElementById("toggleBtn").innerText = "기존 폴리곤 다시 표시";
+            document.getElementById("output").innerText = "기존 폴리곤이 제거되었습니다.";
+        } else {
+            drawOriginalPolygons();
+            polygonsVisible = true;
+            document.getElementById("toggleBtn").innerText = "기존 폴리곤 없애기";
+            document.getElementById("output").innerText = "기존 폴리곤이 다시 표시되었습니다.";
+        }
+    }
+
+    var points = [];
+    var markers = [];
+
+    kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
+        var latlng = mouseEvent.latLng;
+
+        if (markers.length >= 2) {
+            markers.forEach(function(m) { m.setMap(null); });
+            markers = [];
+            points = [];
+        }
+
+        var marker = new kakao.maps.Marker({
+            map: map,
+            position: latlng
+        });
+        markers.push(marker);
+        points.push(latlng);
+
+        if (points.length === 1) {
+            document.getElementById("output").innerText =
+                "첫 번째 좌표: X=" + points[0].getLng().toFixed(6) +
+                ", Y=" + points[0].getLat().toFixed(6);
+        }
+
+        if (points.length === 2) {
+            var line = new kakao.maps.Polyline({ path: points });
+            var distance = line.getLength();
+
+            var xDiff = (points[1].getLng() - points[0].getLng()).toFixed(6);
+            var yDiff = (points[1].getLat() - points[0].getLat()).toFixed(6);
+
+            document.getElementById("output").innerText =
+                "첫 번째 좌표: X=" + points[0].getLng().toFixed(6) +
+                ", Y=" + points[0].getLat().toFixed(6) + "\n" +
+                "두 번째 좌표: X=" + points[1].getLng().toFixed(6) +
+                ", Y=" + points[1].getLat().toFixed(6) + "\n" +
+                "X좌표 차이: " + xDiff + "\n" +
+                "Y좌표 차이: " + yDiff + "\n" +
+                "두 지점 거리: " + Math.round(distance) + "m";
+        }
+    });
+
+    function addMovedPolygon() {
+        var xShift = parseFloat(document.getElementById("xShift").value);
+        var yShift = parseFloat(document.getElementById("yShift").value);
+
+        originalPolygons.forEach(function(poly) {
+            var newPath = poly.getPath().map(function(latlng) {
+                return new kakao.maps.LatLng(latlng.getLat() + yShift, latlng.getLng() + xShift);
+            });
+
+            var movedPolygon = new kakao.maps.Polygon({
+                path: newPath,
+                strokeWeight: 2,
+                strokeColor: '#0000FF',
+                strokeOpacity: 0.8,
+                fillColor: '#0000FF',
+                fillOpacity: 0.4
+            });
+            movedPolygon.setMap(map);
+            movedPolygons.push(movedPolygon);
+        });
+
+        document.getElementById("output").innerText =
+            "이동된 폴리곤 추가됨\nX 이동: " + xShift + "\nY 이동: " + yShift;
+    }
+
+    function removeMovedPolygons() {
+        movedPolygons.forEach(function(poly) {
+            poly.setMap(null);
+        });
+        movedPolygons = [];
+        document.getElementById("output").innerText = "이동된 폴리곤이 모두 제거되었습니다.";
+    }
+
+    // === 현재 위치 표시 및 이동 경로 ===
+    var currentPath = [];
+    var currentPolyline = null;
+    var currentMarker = null;
+
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(function(position) {
+            var lat = position.coords.latitude;
+            var lon = position.coords.longitude;
+            var loc = new kakao.maps.LatLng(lat, lon);
+
+            if (currentMarker) {
+                currentMarker.setPosition(loc);
+            } else {
+                currentMarker = new kakao.maps.Marker({
+                    map: map,
+                    position: loc,
+                    title: "현재 위치"
+                });
+            }
+
+            currentPath.push(loc);
+            if (currentPolyline) {
+                currentPolyline.setMap(null);
+            }
+            currentPolyline = new kakao.maps.Polyline({
+                path: currentPath,
+                strokeWeight: 3,
+                strokeColor: '#00FF00',
+                strokeOpacity: 0.9
+            });
+            currentPolyline.setMap(map);
+
+            map.setCenter(loc);
+        }, function(error) {
+            document.getElementById("output").innerText = "현재 위치를 가져올 수 없습니다.";
+        }, {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 5000
+        });
+    } else {
+        document.getElementById("output").innerText = "이 브라우저는 위치 정보를 지원하지 않습니다.";
+    }
+</script>
+</body>
+</html>

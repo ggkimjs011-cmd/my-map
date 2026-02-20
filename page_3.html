@@ -1,0 +1,210 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>카카오맵 폴리곤 표시 + 거리 계산 + 이동경로 표시</title>
+    <style>
+        #map {
+            width:100%;
+            height:500px;
+        }
+        #output {
+            margin-top:10px;
+            font-size:14px;
+            color:#333;
+            white-space:pre-line;
+        }
+    </style>
+    <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=5f6ea66cec7c2d446a61f4756b27880b&libraries=services"></script>
+</head>
+<body>
+<div id="map"></div>
+<div style="margin-top:10px;">
+    <button onclick="map.setMapTypeId(kakao.maps.MapTypeId.ROADMAP)">일반지도</button>
+    <button onclick="map.setMapTypeId(kakao.maps.MapTypeId.HYBRID)">위성지도</button>
+</div>
+<div style="margin-top:10px;">
+    <label>X 이동: <input type="number" id="xShift" step="0.000001" value="0"></label>
+    <label>Y 이동: <input type="number" id="yShift" step="0.000001" value="0"></label>
+    <button onclick="addMovedPolygon()">이동된 폴리곤 추가</button>
+    <button onclick="removeMovedPolygons()">이동된 폴리곤 모두 제거</button>
+</div>
+<div style="margin-top:10px;">
+    <button id="toggleBtn" onclick="toggleOriginalPolygons()">기존 폴리곤 없애기</button>
+</div>
+<div id="output"></div>
+
+<script>
+    var map = new kakao.maps.Map(document.getElementById('map'), {
+        center: new kakao.maps.LatLng(35.83148549265482, 128.5806969242187),
+        level: 3,
+        mapTypeId: kakao.maps.MapTypeId.HYBRID
+    });
+
+    var polygons = [[[128.58036802170278, 35.832075758595614], [128.58087567535452, 35.83214827486019], [128.58110160918469, 35.83179908435215], [128.5811660568769, 35.831697838429996], [128.58112288311045, 35.83164750606881], [128.58102834301988, 35.83141521268046], [128.58090419215674, 35.83111282482855], [128.58084221428126, 35.830886584418444], [128.58071177810737, 35.830863173151734], [128.58060719968623, 35.830952057438914], [128.5805181734621, 35.83110324517434], [128.58038885499735, 35.83132072254632], [128.58038838609895, 35.8313319684555], [128.58038338934878, 35.83154458194956], [128.58037598840835, 35.83179329093089], [128.58036802170278, 35.832075758595614]]];
+    var originalPolygons = [];
+    var polygonsVisible = true;
+    var movedPolygons = [];
+
+    function drawOriginalPolygons() {
+        polygons.forEach(function(points) {
+            var path = points.map(function(p) {
+                return new kakao.maps.LatLng(p[1], p[0]);
+            });
+
+            var polygon = new kakao.maps.Polygon({
+                path: path,
+                strokeWeight: 2,
+                strokeColor: '#FF0000',
+                strokeOpacity: 0.8,
+                fillColor: '#FF0000',
+                fillOpacity: 0.4
+            });
+            polygon.setMap(map);
+            originalPolygons.push(polygon);
+        });
+    }
+
+    drawOriginalPolygons();
+
+    function toggleOriginalPolygons() {
+        if (polygonsVisible) {
+            originalPolygons.forEach(function(poly) {
+                poly.setMap(null);
+            });
+            originalPolygons = [];
+            polygonsVisible = false;
+            document.getElementById("toggleBtn").innerText = "기존 폴리곤 다시 표시";
+            document.getElementById("output").innerText = "기존 폴리곤이 제거되었습니다.";
+        } else {
+            drawOriginalPolygons();
+            polygonsVisible = true;
+            document.getElementById("toggleBtn").innerText = "기존 폴리곤 없애기";
+            document.getElementById("output").innerText = "기존 폴리곤이 다시 표시되었습니다.";
+        }
+    }
+
+    var points = [];
+    var markers = [];
+
+    kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
+        var latlng = mouseEvent.latLng;
+
+        if (markers.length >= 2) {
+            markers.forEach(function(m) { m.setMap(null); });
+            markers = [];
+            points = [];
+        }
+
+        var marker = new kakao.maps.Marker({
+            map: map,
+            position: latlng
+        });
+        markers.push(marker);
+        points.push(latlng);
+
+        if (points.length === 1) {
+            document.getElementById("output").innerText =
+                "첫 번째 좌표: X=" + points[0].getLng().toFixed(6) +
+                ", Y=" + points[0].getLat().toFixed(6);
+        }
+
+        if (points.length === 2) {
+            var line = new kakao.maps.Polyline({ path: points });
+            var distance = line.getLength();
+
+            var xDiff = (points[1].getLng() - points[0].getLng()).toFixed(6);
+            var yDiff = (points[1].getLat() - points[0].getLat()).toFixed(6);
+
+            document.getElementById("output").innerText =
+                "첫 번째 좌표: X=" + points[0].getLng().toFixed(6) +
+                ", Y=" + points[0].getLat().toFixed(6) + "\n" +
+                "두 번째 좌표: X=" + points[1].getLng().toFixed(6) +
+                ", Y=" + points[1].getLat().toFixed(6) + "\n" +
+                "X좌표 차이: " + xDiff + "\n" +
+                "Y좌표 차이: " + yDiff + "\n" +
+                "두 지점 거리: " + Math.round(distance) + "m";
+        }
+    });
+
+    function addMovedPolygon() {
+        var xShift = parseFloat(document.getElementById("xShift").value);
+        var yShift = parseFloat(document.getElementById("yShift").value);
+
+        originalPolygons.forEach(function(poly) {
+            var newPath = poly.getPath().map(function(latlng) {
+                return new kakao.maps.LatLng(latlng.getLat() + yShift, latlng.getLng() + xShift);
+            });
+
+            var movedPolygon = new kakao.maps.Polygon({
+                path: newPath,
+                strokeWeight: 2,
+                strokeColor: '#0000FF',
+                strokeOpacity: 0.8,
+                fillColor: '#0000FF',
+                fillOpacity: 0.4
+            });
+            movedPolygon.setMap(map);
+            movedPolygons.push(movedPolygon);
+        });
+
+        document.getElementById("output").innerText =
+            "이동된 폴리곤 추가됨\nX 이동: " + xShift + "\nY 이동: " + yShift;
+    }
+
+    function removeMovedPolygons() {
+        movedPolygons.forEach(function(poly) {
+            poly.setMap(null);
+        });
+        movedPolygons = [];
+        document.getElementById("output").innerText = "이동된 폴리곤이 모두 제거되었습니다.";
+    }
+
+    // === 현재 위치 표시 및 이동 경로 ===
+    var currentPath = [];
+    var currentPolyline = null;
+    var currentMarker = null;
+
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(function(position) {
+            var lat = position.coords.latitude;
+            var lon = position.coords.longitude;
+            var loc = new kakao.maps.LatLng(lat, lon);
+
+            if (currentMarker) {
+                currentMarker.setPosition(loc);
+            } else {
+                currentMarker = new kakao.maps.Marker({
+                    map: map,
+                    position: loc,
+                    title: "현재 위치"
+                });
+            }
+
+            currentPath.push(loc);
+            if (currentPolyline) {
+                currentPolyline.setMap(null);
+            }
+            currentPolyline = new kakao.maps.Polyline({
+                path: currentPath,
+                strokeWeight: 3,
+                strokeColor: '#00FF00',
+                strokeOpacity: 0.9
+            });
+            currentPolyline.setMap(map);
+
+            map.setCenter(loc);
+        }, function(error) {
+            document.getElementById("output").innerText = "현재 위치를 가져올 수 없습니다.";
+        }, {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 5000
+        });
+    } else {
+        document.getElementById("output").innerText = "이 브라우저는 위치 정보를 지원하지 않습니다.";
+    }
+</script>
+</body>
+</html>
