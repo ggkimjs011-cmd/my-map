@@ -90,7 +90,7 @@
                         ", Y=" + selectedPoints[1].getLat().toFixed(6) + "\n" +
                         "X축 거리: " + diffMeters.x.toFixed(2) + "m\n" +
                         "Y축 거리: " + diffMeters.y.toFixed(2) + "m\n" +
-                        "두 꼭지점 실제 거리: " + Math.round(distance) + "m";
+                        "두 꼭지점 실제 거리: " + distance.toFixed(2) + "m";
 
                     selectedPoints = []; // 초기화
                 }
@@ -100,3 +100,4 @@
 </script>
 </body>
 </html>
+
