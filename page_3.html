@@ -3,7 +3,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>카카오맵 폴리곤 표시 + 거리 계산 + 이동경로 표시</title>
+    <title>카카오맵 폴리곤 표시 + 거리 계산 + 이동경로 표시 + CSV 저장</title>
     <style>
         #map {
             width:100%;
@@ -33,16 +33,19 @@
 <div style="margin-top:10px;">
     <button id="toggleBtn" onclick="toggleOriginalPolygons()">기존 폴리곤 없애기</button>
 </div>
+<div style="margin-top:10px;">
+    <button onclick="downloadCSV()">이동경로 CSV 저장하기</button>
+</div>
 <div id="output"></div>
 
 <script>
     var map = new kakao.maps.Map(document.getElementById('map'), {
-        center: new kakao.maps.LatLng(35.83148549265482, 128.5806969242187),
+        center: new kakao.maps.LatLng(35.7760936661896, 128.142944861149),
         level: 3,
         mapTypeId: kakao.maps.MapTypeId.HYBRID
     });
 
-    var polygons = [[[128.58036802170278, 35.832075758595614], [128.58087567535452, 35.83214827486019], [128.58110160918469, 35.83179908435215], [128.5811660568769, 35.831697838429996], [128.58112288311045, 35.83164750606881], [128.58102834301988, 35.83141521268046], [128.58090419215674, 35.83111282482855], [128.58084221428126, 35.830886584418444], [128.58071177810737, 35.830863173151734], [128.58060719968623, 35.830952057438914], [128.5805181734621, 35.83110324517434], [128.58038885499735, 35.83132072254632], [128.58038838609895, 35.8313319684555], [128.58038338934878, 35.83154458194956], [128.58037598840835, 35.83179329093089], [128.58036802170278, 35.832075758595614]]];
+    var polygons = [[[128.14286844046174, 35.776125634071896], [128.1428656202689, 35.77609066424747], [128.1429474600154, 35.77610703803291], [128.1429928373368, 35.776140896709826], [128.14304111142178, 35.776198496413656], [128.14308132390207, 35.776235463483935], [128.1430977606575, 35.77622904688241], [128.14303872447167, 35.776114980437285], [128.14294193328413, 35.776065614108774], [128.14272847918903, 35.77598423220076], [128.14261921369823, 35.775946159074934], [128.14252911166218, 35.77598645847261], [128.14254471809096, 35.77605313476218], [128.14262834966513, 35.77608593295494], [128.14271217871269, 35.77609420102584], [128.14278003503586, 35.7761120161793], [128.14286844046174, 35.776125634071896]], [[128.1432004298381, 35.77620383320839], [128.1432068042258, 35.77610464428607], [128.14324101476853, 35.77608161866534], [128.14318132708598, 35.77604874844378], [128.14312157739238, 35.77600004314243], [128.14301955400597, 35.77596313959097], [128.14298443325941, 35.776011167778634], [128.1431250811242, 35.776122689475095], [128.1432004298381, 35.77620383320839]]];
     var originalPolygons = [];
     var polygonsVisible = true;
     var movedPolygons = [];
@@ -85,92 +88,24 @@
         }
     }
 
-    var points = [];
-    var markers = [];
-
-    kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
-        var latlng = mouseEvent.latLng;
-
-        if (markers.length >= 2) {
-            markers.forEach(function(m) { m.setMap(null); });
-            markers = [];
-            points = [];
-        }
-
-        var marker = new kakao.maps.Marker({
-            map: map,
-            position: latlng
-        });
-        markers.push(marker);
-        points.push(latlng);
-
-        if (points.length === 1) {
-            document.getElementById("output").innerText =
-                "첫 번째 좌표: X=" + points[0].getLng().toFixed(6) +
-                ", Y=" + points[0].getLat().toFixed(6);
-        }
-
-        if (points.length === 2) {
-            var line = new kakao.maps.Polyline({ path: points });
-            var distance = line.getLength();
-
-            var xDiff = (points[1].getLng() - points[0].getLng()).toFixed(6);
-            var yDiff = (points[1].getLat() - points[0].getLat()).toFixed(6);
-
-            document.getElementById("output").innerText =
-                "첫 번째 좌표: X=" + points[0].getLng().toFixed(6) +
-                ", Y=" + points[0].getLat().toFixed(6) + "\n" +
-                "두 번째 좌표: X=" + points[1].getLng().toFixed(6) +
-                ", Y=" + points[1].getLat().toFixed(6) + "\n" +
-                "X좌표 차이: " + xDiff + "\n" +
-                "Y좌표 차이: " + yDiff + "\n" +
-                "두 지점 거리: " + Math.round(distance) + "m";
-        }
-    });
-
-    function addMovedPolygon() {
-        var xShift = parseFloat(document.getElementById("xShift").value);
-        var yShift = parseFloat(document.getElementById("yShift").value);
-
-        originalPolygons.forEach(function(poly) {
-            var newPath = poly.getPath().map(function(latlng) {
-                return new kakao.maps.LatLng(latlng.getLat() + yShift, latlng.getLng() + xShift);
-            });
-
-            var movedPolygon = new kakao.maps.Polygon({
-                path: newPath,
-                strokeWeight: 2,
-                strokeColor: '#0000FF',
-                strokeOpacity: 0.8,
-                fillColor: '#0000FF',
-                fillOpacity: 0.4
-            });
-            movedPolygon.setMap(map);
-            movedPolygons.push(movedPolygon);
-        });
-
-        document.getElementById("output").innerText =
-            "이동된 폴리곤 추가됨\nX 이동: " + xShift + "\nY 이동: " + yShift;
-    }
-
-    function removeMovedPolygons() {
-        movedPolygons.forEach(function(poly) {
-            poly.setMap(null);
-        });
-        movedPolygons = [];
-        document.getElementById("output").innerText = "이동된 폴리곤이 모두 제거되었습니다.";
-    }
-
     // === 현재 위치 표시 및 이동 경로 ===
     var currentPath = [];
     var currentPolyline = null;
     var currentMarker = null;
+    var trackedData = []; // CSV 저장용 배열
 
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(function(position) {
             var lat = position.coords.latitude;
             var lon = position.coords.longitude;
             var loc = new kakao.maps.LatLng(lat, lon);
+
+            var timestamp = new Date().toISOString();
+            trackedData.push({
+                time: timestamp,
+                x: lon.toFixed(6),
+                y: lat.toFixed(6)
+            });
 
             if (currentMarker) {
                 currentMarker.setPosition(loc);
@@ -205,6 +140,30 @@
     } else {
         document.getElementById("output").innerText = "이 브라우저는 위치 정보를 지원하지 않습니다.";
     }
+
+    // CSV 다운로드 함수
+    function downloadCSV() {
+        if (trackedData.length === 0) {
+            alert("저장할 이동경로가 없습니다.");
+            return;
+        }
+
+        var csvContent = "시간,X좌표,Y좌표\n" + 
+            trackedData.map(function(d) {
+                return d.time + "," + d.x + "," + d.y;
+            }).join("\n");
+
+        var blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        var url = URL.createObjectURL(blob);
+
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = "tracked_path.csv";
+        a.click();
+
+        URL.revokeObjectURL(url);
+    }
 </script>
 </body>
 </html>
+
